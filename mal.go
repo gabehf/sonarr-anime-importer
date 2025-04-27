@@ -17,9 +17,13 @@ func handleMalAnimeSearch(idMap *ConcurrentMap, permaSkipMalIds []string) http.H
 		search, err := getJikanAnimeSearch(idMap, permaSkipMalIds, r)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+				log.Printf("Error writing error response: %v", writeErr)
+			}
 		} else {
-			w.Write([]byte(search))
+			if _, writeErr := w.Write([]byte(search)); writeErr != nil {
+				log.Printf("Error writing response: %v", writeErr)
+			}
 		}
 	})
 }

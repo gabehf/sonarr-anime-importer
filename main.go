@@ -20,11 +20,13 @@ type ResponseItem struct {
 	AniListId int    `json:"anilistId,omitempty"`
 	TvdbId    int    `json:"tvdbId"`
 }
+
 type AnimeEntry struct {
-	TvdbId    int         `json:"tvdb_id"`
-	MalId     interface{} `json:"mal_id"`
-	AniListId int         `json:"anilist_id"`
+	TvdbId    int `json:"tvdb_id"`
+	MalId     any `json:"mal_id"`
+	AniListId int `json:"anilist_id"`
 }
+
 type ConcurrentMap struct {
 	mal map[int]int
 	mut sync.RWMutex
@@ -38,8 +40,10 @@ func (m *ConcurrentMap) GetByMalId(i int) int {
 
 var lastBuiltAnimeIdList time.Time
 
+const Version = "v0.2.1"
+
 func main() {
-	log.Println("sonarr-anime-importer v0.2.1")
+	log.Printf("sonarr-anime-importer %s", Version)
 	log.Println("Building Anime ID Associations...")
 	var idMap = new(ConcurrentMap)
 	buildIdMap(idMap)
@@ -57,7 +61,14 @@ func main() {
 	http.HandleFunc("/v1/mal/anime", loggerMiddleware(buildIdMapMiddleware(handleMalAnimeSearch(idMap, permaSkipMalIds))))
 	http.HandleFunc("/v1/anilist/anime", loggerMiddleware(buildIdMapMiddleware(handleAniListAnimeSearch(idMap, permaSkipAniListIds))))
 	log.Println("Listening on :3333")
-	log.Fatal(http.ListenAndServe(":3333", nil))
+
+	srv := &http.Server{
+		Addr:         ":3333",
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func buildIdMap(idMap *ConcurrentMap) {
@@ -69,7 +80,11 @@ func buildIdMap(idMap *ConcurrentMap) {
 	if err != nil {
 		log.Fatal("Error fetching anime_ids.json: ", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Printf("Error closing response body: %v", closeErr)
+		}
+	}()
 	idListBytes, err = io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal("Error reading anime_ids.json: ", err)

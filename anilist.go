@@ -102,9 +102,13 @@ func handleAniListAnimeSearch(idMap *ConcurrentMap, permaSkipIds []string) http.
 		search, err := getAniListAnimeSearch(idMap, permaSkipIds, r)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+				log.Printf("Error writing error response: %v", writeErr)
+			}
 		} else {
-			w.Write(search)
+			if _, writeErr := w.Write(search); writeErr != nil {
+				log.Printf("Error writing response: %v", writeErr)
+			}
 		}
 	}
 }
@@ -187,7 +191,7 @@ func makeAniListApiCall(q url.Values) (*AniListApiResponse, error) {
 	// Build the GraphQL request body
 	variables := BuildGraphQLVariables(q)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"query":     anilistQuery,
 		"variables": variables,
 	}
@@ -201,7 +205,11 @@ func makeAniListApiCall(q url.Values) (*AniListApiResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Printf("Error closing response body: %v", closeErr)
+		}
+	}()
 
 	respData := new(AniListApiResponse)
 	err = json.NewDecoder(resp.Body).Decode(respData)
@@ -212,8 +220,8 @@ func makeAniListApiCall(q url.Values) (*AniListApiResponse, error) {
 }
 
 // BuildGraphQLVariables converts URL query parameters into a GraphQL variables map.
-func BuildGraphQLVariables(params url.Values) map[string]interface{} {
-	vars := make(map[string]interface{})
+func BuildGraphQLVariables(params url.Values) map[string]any {
+	vars := make(map[string]any)
 
 	// Helper to convert comma-separated strings into slices
 	parseList := func(key string) []string {
