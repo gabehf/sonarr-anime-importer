@@ -36,10 +36,25 @@ func newRebuildStaleIdMapMiddleware(idMap *ConcurrentMap) func(http.HandlerFunc)
 	}
 }
 
+type statusResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusResponseWriter) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
 func loggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print(RequestString(r))
-		next.ServeHTTP(w, r)
+		start := time.Now()
+
+		srw := &statusResponseWriter{ResponseWriter: w, status: http.StatusOK} // default to 200
+		next.ServeHTTP(srw, r)
+
+		duration := time.Since(start)
+		log.Printf("%s - %d %s - %v", RequestString(r), srw.status, http.StatusText(srw.status), duration)
 	})
 }
 
