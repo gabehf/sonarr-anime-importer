@@ -6,7 +6,7 @@
 # commit changes
 # push commit
 # run script
-version=0.2.1
+version=0.2.2
 image_name=gabehf/sonarr-anime-importer
 
 git tag v$version

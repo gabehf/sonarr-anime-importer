@@ -42,7 +42,7 @@ func (m *ConcurrentMap) GetByMalId(i int) int {
 
 var lastBuiltAnimeIdList time.Time
 
-const Version = "v0.2.1"
+const Version = "v0.2.2"
 
 func main() {
 	log.Printf("sonarr-anime-importer %s", Version)
