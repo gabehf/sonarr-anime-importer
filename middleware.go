@@ -1,13 +1,31 @@
 package main
 
 import (
+	"bytes"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 )
 
-func newRebuildStaleIdMapMiddleware(idMap *ConcurrentMap) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+// from https://medium.com/@chrisgregory_83433/chaining-middleware-in-go-918cfbc5644d
+type Middleware func(http.HandlerFunc) http.HandlerFunc
+
+func ChainMiddleware(h http.HandlerFunc, m ...Middleware) http.HandlerFunc {
+	if len(m) < 1 {
+		return h
+	}
+	wrapped := h
+	// loop in reverse to preserve middleware order
+	for i := len(m) - 1; i >= 0; i-- {
+		wrapped = m[i](wrapped)
+	}
+	return wrapped
+}
+
+func newRebuildStaleIdMapMiddleware(idMap *ConcurrentMap) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if time.Since(lastBuiltAnimeIdList) > 24*time.Hour {
 				log.Println("Anime ID association table expired, building new table...")
@@ -18,9 +36,47 @@ func newRebuildStaleIdMapMiddleware(idMap *ConcurrentMap) func(http.Handler) htt
 	}
 }
 
-func loggerMiddleware(next http.Handler) http.HandlerFunc {
+func loggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+		log.Print(RequestString(r))
 		next.ServeHTTP(w, r)
 	})
+}
+
+type cacheResponseWriter struct {
+	http.ResponseWriter
+	status int
+	body   *bytes.Buffer
+}
+
+func (w *cacheResponseWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *cacheResponseWriter) Write(b []byte) (int, error) {
+	w.body.Write(b) // Capture body
+	return w.ResponseWriter.Write(b)
+}
+
+func newCacheMiddleware(c *cache.Cache) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := RequestString(r)
+			if cachedResp, found := c.Get(key); found {
+				log.Println("Responding with cached response")
+				w.WriteHeader(http.StatusOK)
+				w.Write(cachedResp.([]byte))
+				return
+			}
+			crw := &cacheResponseWriter{
+				ResponseWriter: w,
+				body:           &bytes.Buffer{},
+			}
+			next.ServeHTTP(crw, r)
+			if crw.status == http.StatusOK {
+				c.Set(key, crw.body.Bytes(), cache.DefaultExpiration)
+			}
+		})
+	}
 }

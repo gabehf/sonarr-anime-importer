@@ -106,6 +106,7 @@ func handleAniListAnimeSearch(idMap *ConcurrentMap, permaSkipIds []string) http.
 				log.Printf("Error writing error response: %v", writeErr)
 			}
 		} else {
+			w.WriteHeader(http.StatusOK)
 			if _, writeErr := w.Write(search); writeErr != nil {
 				log.Printf("Error writing response: %v", writeErr)
 			}

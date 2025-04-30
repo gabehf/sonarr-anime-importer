@@ -1,2 +1,4 @@
 github.com/darenliang/jikan-go v1.2.3 h1:Nw6ykJU47QW3rwiIBWHyy1cBNM1Cxsz0AVCdqIN278A=
 github.com/darenliang/jikan-go v1.2.3/go.mod h1:rv7ksvNqc1b0UK7mf1Uc3swPToJXd9EZQLz5C38jk9Q=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=

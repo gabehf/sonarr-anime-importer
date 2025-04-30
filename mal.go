@@ -21,6 +21,7 @@ func handleMalAnimeSearch(idMap *ConcurrentMap, permaSkipMalIds []string) http.H
 				log.Printf("Error writing error response: %v", writeErr)
 			}
 		} else {
+			w.WriteHeader(http.StatusOK)
 			if _, writeErr := w.Write([]byte(search)); writeErr != nil {
 				log.Printf("Error writing response: %v", writeErr)
 			}

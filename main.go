@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 )
 
 type ResponseItem struct {
@@ -57,9 +59,15 @@ func main() {
 	if permaSkipAniListStr != "" {
 		log.Printf("Always skipping AniList IDs: %v\n", permaSkipAniListIds)
 	}
-	buildIdMapMiddleware := newRebuildStaleIdMapMiddleware(idMap)
-	http.HandleFunc("/v1/mal/anime", loggerMiddleware(buildIdMapMiddleware(handleMalAnimeSearch(idMap, permaSkipMalIds))))
-	http.HandleFunc("/v1/anilist/anime", loggerMiddleware(buildIdMapMiddleware(handleAniListAnimeSearch(idMap, permaSkipAniListIds))))
+	log.Printf("Preparing cache...")
+	c := cache.New(10*time.Minute, 15*time.Minute)
+	middleware := []Middleware{
+		loggerMiddleware,
+		newCacheMiddleware(c),
+		newRebuildStaleIdMapMiddleware(idMap),
+	}
+	http.HandleFunc("/v1/mal/anime", ChainMiddleware(handleMalAnimeSearch(idMap, permaSkipMalIds), middleware...))
+	http.HandleFunc("/v1/anilist/anime", ChainMiddleware(handleAniListAnimeSearch(idMap, permaSkipAniListIds), middleware...))
 	log.Println("Listening on :3333")
 
 	srv := &http.Server{

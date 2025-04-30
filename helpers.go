@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -27,4 +29,8 @@ func FullAnimeTitle(title, engtitle string) string {
 	} else {
 		return title
 	}
+}
+
+func RequestString(r *http.Request) string {
+	return fmt.Sprintf("%s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
 }
