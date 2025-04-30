@@ -15,14 +15,6 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-type ResponseItem struct {
-	Title     string `json:"title"`
-	TitleEng  string `json:"titleEnglish,omitempty"`
-	MalId     int    `json:"malId,omitempty"`
-	AniListId int    `json:"anilistId,omitempty"`
-	TvdbId    int    `json:"tvdbId"`
-}
-
 type AnimeEntry struct {
 	TvdbId    int `json:"tvdb_id"`
 	MalId     any `json:"mal_id"`
@@ -40,6 +32,10 @@ func (m *ConcurrentMap) GetByMalId(i int) int {
 	return m.mal[i]
 }
 
+var PermaSkipIds []string
+
+var Cache = cache.New(10*time.Minute, 15*time.Minute)
+
 var lastBuiltAnimeIdList time.Time
 
 const Version = "v0.2.2"
@@ -49,25 +45,18 @@ func main() {
 	log.Println("Building Anime ID Associations...")
 	var idMap = new(ConcurrentMap)
 	buildIdMap(idMap)
-	permaSkipMalStr := os.Getenv("ALWAYS_SKIP_MAL_IDS")
-	permaSkipMalIds := strings.Split(permaSkipMalStr, ",")
-	if permaSkipMalStr != "" {
-		log.Printf("Always skipping MAL IDs: %v\n", permaSkipMalIds)
+	permaSkipStr := os.Getenv("ALWAYS_SKIP_TVDB_IDS")
+	PermaSkipIds = strings.Split(permaSkipStr, ",")
+	if permaSkipStr != "" {
+		log.Printf("Always skipping TVDB IDs: %v\n", PermaSkipIds)
 	}
-	permaSkipAniListStr := os.Getenv("ALWAYS_SKIP_ANILIST_IDS")
-	permaSkipAniListIds := strings.Split(permaSkipAniListStr, ",")
-	if permaSkipAniListStr != "" {
-		log.Printf("Always skipping AniList IDs: %v\n", permaSkipAniListIds)
-	}
-	log.Printf("Preparing cache...")
-	c := cache.New(10*time.Minute, 15*time.Minute)
 	middleware := []Middleware{
 		loggerMiddleware,
-		newCacheMiddleware(c),
+		cacheMiddleware,
 		newRebuildStaleIdMapMiddleware(idMap),
 	}
-	http.HandleFunc("/v1/mal/anime", ChainMiddleware(handleMalAnimeSearch(idMap, permaSkipMalIds), middleware...))
-	http.HandleFunc("/v1/anilist/anime", ChainMiddleware(handleAniListAnimeSearch(idMap, permaSkipAniListIds), middleware...))
+	http.HandleFunc("/v1/mal/anime", ChainMiddleware(handleMalAnimeSearch(idMap), middleware...))
+	http.HandleFunc("/v1/anilist/anime", ChainMiddleware(handleAniListAnimeSearch(idMap), middleware...))
 	log.Println("Listening on :3333")
 
 	srv := &http.Server{

@@ -74,24 +74,22 @@ func (w *cacheResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-func newCacheMiddleware(c *cache.Cache) func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := RequestString(r)
-			if cachedResp, found := c.Get(key); found {
-				log.Println("Responding with cached response")
-				w.WriteHeader(http.StatusOK)
-				w.Write(cachedResp.([]byte))
-				return
-			}
-			crw := &cacheResponseWriter{
-				ResponseWriter: w,
-				body:           &bytes.Buffer{},
-			}
-			next.ServeHTTP(crw, r)
-			if crw.status == http.StatusOK {
-				c.Set(key, crw.body.Bytes(), cache.DefaultExpiration)
-			}
-		})
-	}
+func cacheMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := RequestString(r)
+		if cachedResp, found := Cache.Get(key); found {
+			log.Println("Responding with cached response")
+			w.WriteHeader(http.StatusOK)
+			w.Write(cachedResp.([]byte))
+			return
+		}
+		crw := &cacheResponseWriter{
+			ResponseWriter: w,
+			body:           &bytes.Buffer{},
+		}
+		next.ServeHTTP(crw, r)
+		if crw.status == http.StatusOK {
+			Cache.Set(key, crw.body.Bytes(), cache.DefaultExpiration)
+		}
+	})
 }
