@@ -17,6 +17,7 @@ See https://docs.api.jikan.moe/#tag/anime/operation/getAnimeSearch for parameter
 
 Additional parameters supported:
 - `allow_duplicates`: skips de-duplication of results
+- `merge_seasons`: skips seasons of already included shows
 
 Example request:
 ```bash
@@ -48,6 +49,7 @@ Parameters:
 - sort: [[MediaSort]](https://studio.apollographql.com/sandbox/schema/reference/enums/MediaSort)
 - limit: Int
 - allowDuplicates: Boolean
+- mergeSeasons: Boolean
 
 Example request:
 ```bash
@@ -57,8 +59,7 @@ curl "http://localhost:3333/v1/anilist/anime?format=TV,ONA&sort=TRENDING_DESC&is
 
 ## Environment
 One configuration environment variable is supported:
-- `ALWAYS_SKIP_MAL_IDS`: Comma-separated list of MyAnimeList IDs to always skip. These do not count towards the return limit.
-- `ALWAYS_SKIP_ANILIST_IDS`: Comma-separated list of AniList IDs to always skip. These do not count towards the return limit.
+- `ALWAYS_SKIP_TVDB_IDS`: Comma-separated list of TVDB IDs to always skip. These do not count towards the return limit.
 
 ## Docker Compose
 ```yaml
@@ -69,8 +70,7 @@ services:
     ports:
       - 3333:3333
     environment:
-      - ALWAYS_SKIP_MAL_IDS=12345,67890 # Comma-separated
-      - ALWAYS_SKIP_ANILIST_IDS=01234,56789 # Comma-separated
+      - ALWAYS_SKIP_TVDB_IDS=12345,67890 # Comma-separated
     restart: unless-stopped
 
 ```
