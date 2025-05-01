@@ -38,7 +38,7 @@ var Cache = cache.New(10*time.Minute, 15*time.Minute)
 
 var lastBuiltAnimeIdList time.Time
 
-const Version = "v0.2.2"
+const Version = "v0.3.0"
 
 func main() {
 	log.Printf("sonarr-anime-importer %s", Version)
