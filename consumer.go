@@ -83,9 +83,7 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 			var result *jikan.AnimeSearch
 			if cachedResult, found := Cache.Get(fmt.Sprint(MyAnimeList) + opts.Query.Encode()); found {
 				result = cachedResult.(*jikan.AnimeSearch)
-				log.Println("Jikan cache hit!")
 			} else {
-				log.Println(opts.Query.Encode())
 				newResult, err := jikan.GetAnimeSearch(opts.Query)
 				if err != nil {
 					log.Println("Error sending request to Jikan: ", err)
@@ -103,10 +101,17 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 			}
 			hasNextPage = result.Pagination.HasNextPage
 		} else if target == AniList {
-			result, err := makeAniListApiCall(opts.Query)
-			if err != nil {
-				log.Println("Error sending request to AniList: ", err)
-				return nil, err
+			var result *AniListApiResponse
+			if cachedResult, found := Cache.Get(fmt.Sprint(AniList) + opts.Query.Encode()); found {
+				result = cachedResult.(*AniListApiResponse)
+			} else {
+				newResult, err := makeAniListApiCall(opts.Query)
+				if err != nil {
+					log.Println("Error sending request to AniList: ", err)
+					return nil, err
+				}
+				result = newResult
+				Cache.Set(fmt.Sprint(AniList)+opts.Query.Encode(), newResult, cache.DefaultExpiration)
 			}
 			for _, item := range result.Data.Page.Media {
 				respItem := ResponseItemFromAPI(AniList, item)
@@ -127,12 +132,12 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 				log.Printf("MyAnimeList ID %d (%s) has no associated TVDB ID, skipping...\n", item.MalId, FullAnimeTitle(item.Title, item.TitleEng))
 				continue
 			}
-			if usedTvdbIds[item.TvdbId] && opts.MergeSeasons {
-				log.Printf("MyAnimeList ID %d (%s) is season of an already included anime, skipping...\n", item.MalId, FullAnimeTitle(item.Title, item.TitleEng))
-				continue
-			}
 			if usedIds[item.MalId] && !opts.AllowDuplicates {
 				log.Printf("MyAnimeList ID %d (%s) is a duplicate, skipping...\n", item.MalId, FullAnimeTitle(item.Title, item.TitleEng))
+				continue
+			}
+			if usedTvdbIds[item.TvdbId] && opts.MergeSeasons {
+				log.Printf("MyAnimeList ID %d (%s) is season of an already included anime, skipping...\n", item.MalId, FullAnimeTitle(item.Title, item.TitleEng))
 				continue
 			}
 			if slices.Contains(PermaSkipIds, strconv.Itoa(idMap.GetByMalId(item.MalId))) {
@@ -147,6 +152,7 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 			usedIds[item.MalId] = true
 			usedTvdbIds[item.TvdbId] = true
 		}
+		apiItems = make([]*ResponseItem, 0)
 		if count > opts.Limit {
 			break
 		}

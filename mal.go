@@ -11,8 +11,10 @@ func handleMalAnimeSearch(idMap *ConcurrentMap) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		opts, err := SearchOptsFromMalRequest(r)
 		if err != nil {
-			log.Printf("Error creating search options: %v", err)
-			return
+			w.WriteHeader(400)
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+				log.Printf("Error writing error response: %v", writeErr)
+			}
 		}
 		search, err := makeApiRequest(idMap, MyAnimeList, opts)
 		if err != nil {
@@ -34,7 +36,7 @@ func SearchOptsFromMalRequest(r *http.Request) (*SearchOpts, error) {
 
 	limit, err := strconv.Atoi(q.Get("limit"))
 	if err != nil {
-		return nil, errors.New(" Required parameter \"limit\" not specified")
+		return nil, errors.New("required parameter \"limit\" not specified")
 	}
 
 	skipDedup := parseBoolParam(q, "allow_duplicates")

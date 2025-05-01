@@ -99,8 +99,10 @@ func handleAniListAnimeSearch(idMap *ConcurrentMap) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		opts, err := SearchOptsFromAniListRequest(r)
 		if err != nil {
-			log.Printf("Error creating search options: %v", err)
-			return
+			w.WriteHeader(400)
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+				log.Printf("Error writing error response: %v", writeErr)
+			}
 		}
 		search, err := makeApiRequest(idMap, AniList, opts)
 		if err != nil {
@@ -123,7 +125,7 @@ func SearchOptsFromAniListRequest(r *http.Request) (*SearchOpts, error) {
 	// set default params
 	limit, err := strconv.Atoi(q.Get("limit"))
 	if err != nil {
-		return nil, errors.New(" Required parameter \"limit\" not specified")
+		return nil, errors.New("required parameter \"limit\" not specified")
 	}
 
 	// dont include limit in the AniList api call as its already hard coded at 20 per page
