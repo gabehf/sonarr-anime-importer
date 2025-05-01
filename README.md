@@ -75,16 +75,11 @@ services:
 
 ```
 
-# TODO
-- [x] Only do "a.k.a." when logging if the anime has different romanized and english titles
-- [ ] Prevent spamming calls when few/no IDs are mapped to TVDB
-
 # Albums that fueled development
 | Album                   | Artist                          |
 |-------------------------|---------------------------------|
-| ZOO!!                   | Necry Talkie (ネクライトーキー)    |
-| FREAK                   | Necry Talkie (ネクライトーキー)    |
-| Expert In A Dying Field | The Beths                       |
-| Vivid                   | ADOY                            |
-| CHUU                    | Strawberry Rush                 |
-| MIMI                    | Hug (feat. HATSUNE MIKU & KAFU) |
+| Kill la Kill OST        | Various Artists                 |
+| Your Name OST           | RADWIMPS                        |
+| Kessoku Band            | Kessoku Band                    |
+| Oidaki                  | Tota                            |
+<sup>it only seems right i listen to anime music while i work on this</sup>
