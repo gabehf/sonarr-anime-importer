@@ -74,6 +74,7 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 	count := 0
 	usedIds := make(map[int]bool, 0)
 	usedTvdbIds := make(map[int]bool, 0)
+	anilistRemaining := -1
 
 	for hasNextPage {
 
@@ -105,12 +106,13 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 			if cachedResult, found := Cache.Get(fmt.Sprint(AniList) + opts.Query.Encode()); found {
 				result = cachedResult.(*AniListApiResponse)
 			} else {
-				newResult, err := makeAniListApiCall(opts.Query)
+				newResult, rl, err := makeAniListApiCall(opts.Query)
 				if err != nil {
 					log.Println("Error sending request to AniList: ", err)
 					return nil, err
 				}
 				result = newResult
+				anilistRemaining = rl.Remaining
 				Cache.Set(fmt.Sprint(AniList)+opts.Query.Encode(), newResult, cache.DefaultExpiration)
 			}
 			for _, item := range result.Data.Page.Media {
@@ -157,7 +159,10 @@ func makeApiRequest(idMap *ConcurrentMap, target SupportedAPI, opts *SearchOpts)
 			break
 		}
 		if hasNextPage {
-			time.Sleep(500 * time.Millisecond) // sleep between requests for new page to try and avoid rate limits
+			if anilistRemaining == 0 {
+				log.Println("AniList rate limit nearly exhausted, waiting 60 seconds before next page...")
+				time.Sleep(60 * time.Second)
+			}
 		}
 	}
 

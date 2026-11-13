@@ -35,6 +35,7 @@ Parameters:
 - countryOfOrigin: [CountryCode](https://studio.apollographql.com/sandbox/schema/reference/scalars/CountryCode)
 - season: [MediaSeason](https://studio.apollographql.com/sandbox/schema/reference/enums/MediaSeason)
 - seasonYear: Int
+- currentSeason: Boolean (This overrides the season and seasonYear to fetch the most current season)
 - year: String
 - onList: Boolean
 - yearLesser: [FuzzyDateInt](https://studio.apollographql.com/sandbox/schema/reference/scalars/FuzzyDateInt)

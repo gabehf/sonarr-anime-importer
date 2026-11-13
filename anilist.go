@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const anilistQuery = `
@@ -131,6 +132,13 @@ func SearchOptsFromAniListRequest(r *http.Request) (*SearchOpts, error) {
 	// dont include limit in the AniList api call as its already hard coded at 20 per page
 	q.Del("limit")
 
+	if parseBoolParam(q, "currentSeason") {
+		season, year := CurrentAnimeSeason(time.Now())
+		q.Set("season", season)
+		q.Set("seasonYear", strconv.Itoa(year))
+		q.Del("currentSeason")
+	}
+
 	q.Set("type", "ANIME")
 
 	skipDedup := parseBoolParam(q, "allowDuplicates")
@@ -144,8 +152,11 @@ func SearchOptsFromAniListRequest(r *http.Request) (*SearchOpts, error) {
 	}, nil
 }
 
-func makeAniListApiCall(q url.Values) (*AniListApiResponse, error) {
-	// Build the GraphQL request body
+type AniListRateLimitInfo struct {
+	Remaining int
+}
+
+func makeAniListApiCall(q url.Values) (*AniListApiResponse, *AniListRateLimitInfo, error) {
 	variables := BuildGraphQLVariables(q)
 
 	body := map[string]any{
@@ -154,26 +165,43 @@ func makeAniListApiCall(q url.Values) (*AniListApiResponse, error) {
 	}
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Make the POST request
-	resp, err := http.Post("https://graphql.anilist.co", "application/json", bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
+	for {
+		resp, err := http.Post("https://graphql.anilist.co", "application/json", bytes.NewBuffer(jsonBody))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rl := &AniListRateLimitInfo{Remaining: -1}
+		if v, err := strconv.Atoi(resp.Header.Get("X-RateLimit-Remaining")); err == nil {
+			rl.Remaining = v
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retryAfter := 60
+			if v, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && v > 0 {
+				retryAfter = v
+			}
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				log.Printf("Error closing response body: %v", closeErr)
+			}
+			log.Printf("AniList rate limit exceeded, retrying after %d seconds...", retryAfter)
+			time.Sleep(time.Duration(retryAfter) * time.Second)
+			continue
+		}
+
+		respData := new(AniListApiResponse)
+		err = json.NewDecoder(resp.Body).Decode(respData)
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			log.Printf("Error closing response body: %v", closeErr)
 		}
-	}()
-
-	respData := new(AniListApiResponse)
-	err = json.NewDecoder(resp.Body).Decode(respData)
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, nil, err
+		}
+		return respData, rl, nil
 	}
-	return respData, nil
 }
 
 // BuildGraphQLVariables converts URL query parameters into a GraphQL variables map.

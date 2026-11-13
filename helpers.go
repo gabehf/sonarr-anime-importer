@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // parses the boolean param "name" from url.Values "values"
@@ -33,4 +34,21 @@ func FullAnimeTitle(title, engtitle string) string {
 
 func RequestString(r *http.Request) string {
 	return fmt.Sprintf("%s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+}
+
+// CurrentAnimeSeason returns the AniList season name and year for the given time,
+// following the same quarter mapping used by AniList and AniChart.
+func CurrentAnimeSeason(t time.Time) (season string, year int) {
+	year = t.Year()
+	switch t.Month() {
+	case time.January, time.February, time.March:
+		season = "WINTER"
+	case time.April, time.May, time.June:
+		season = "SPRING"
+	case time.July, time.August, time.September:
+		season = "SUMMER"
+	default:
+		season = "FALL"
+	}
+	return
 }
