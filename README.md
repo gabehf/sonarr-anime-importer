@@ -40,6 +40,7 @@ Parameters:
 - onList: Boolean
 - yearLesser: [FuzzyDateInt](https://studio.apollographql.com/sandbox/schema/reference/scalars/FuzzyDateInt)
 - yearGreater: [FuzzyDateInt](https://studio.apollographql.com/sandbox/schema/reference/scalars/FuzzyDateInt)
+- past: String (Alternative relative date filter that sets yearGreater. Format is `<number><unit>`, e.g. `30d` for days, `6m` for months, `5y` for years)
 - averageScoreGreater: Int
 - averageScoreLesser: Int
 - genres: [String]

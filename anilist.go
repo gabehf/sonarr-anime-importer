@@ -249,6 +249,31 @@ func BuildGraphQLVariables(params url.Values) map[string]any {
 	if v := parseInt("yearGreater"); v != nil {
 		vars["yearGreater"] = *v
 	}
+
+	if val := params.Get("past"); val != "" {
+		if len(val) > 1 {
+			unit := val[len(val)-1]
+			amountStr := val[:len(val)-1]
+			if amount, err := strconv.Atoi(amountStr); err == nil {
+				now := time.Now()
+				var pastDate time.Time
+				switch unit {
+				case 'd', 'D':
+					pastDate = now.AddDate(0, 0, -amount)
+				case 'm', 'M':
+					pastDate = now.AddDate(0, -amount, 0)
+				case 'y', 'Y':
+					pastDate = now.AddDate(-amount, 0, 0)
+				}
+				
+				if !pastDate.IsZero() {
+					if fuzzyDateInt, err := strconv.Atoi(pastDate.Format("20060102")); err == nil {
+						vars["yearGreater"] = fuzzyDateInt
+					}
+				}
+			}
+		}
+	}
 	if v := parseInt("averageScoreGreater"); v != nil {
 		vars["averageScoreGreater"] = *v
 	}
